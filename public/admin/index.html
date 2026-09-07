@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Store Operator Admin</title>
+<style>
+  :root {
+    --ink: #122036;
+    --teal: #0E9F6E;
+    --teal-dark: #0B7F58;
+    --paper: #FFFFFF;
+    --mist: #F4F6F8;
+    --border: #DDE3E8;
+    --danger: #C1443C;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--mist); color: var(--ink);
+  }
+  header {
+    background: var(--ink); color: #fff; padding: 16px 24px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .store-picker { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  select, input, textarea, button {
+    font-family: inherit; font-size: 13.5px; border-radius: 8px; border: 1px solid var(--border);
+    padding: 8px 10px; background: var(--paper); color: var(--ink);
+  }
+  header select { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.25); }
+  button {
+    background: var(--teal); color: #fff; border: none; cursor: pointer; font-weight: 600;
+  }
+  button:hover { background: var(--teal-dark); }
+  button.secondary { background: var(--paper); color: var(--ink); border: 1px solid var(--border); }
+  button.danger { background: var(--danger); }
+
+  nav { display: flex; gap: 4px; padding: 12px 24px 0; background: var(--paper); border-bottom: 1px solid var(--border); }
+  nav button.tab {
+    background: none; color: #5b6b7d; border: none; border-radius: 8px 8px 0 0; padding: 10px 16px;
+    font-weight: 600; box-shadow: none;
+  }
+  nav button.tab.active { background: var(--mist); color: var(--ink); }
+
+  main { padding: 24px; max-width: 900px; margin: 0 auto; }
+  .card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 14px; margin: 0 0 12px; }
+  .row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .row input, .row select { flex: 1; min-width: 120px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  th { color: #5b6b7d; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.02em; }
+  td input { width: 90px; padding: 5px 7px; }
+  .status { font-size: 12px; padding: 6px 10px; border-radius: 6px; margin-top: 8px; display: none; }
+  .status.ok { display: block; background: #E4F6EE; color: var(--teal-dark); }
+  .status.err { display: block; background: #FBEAE9; color: var(--danger); }
+  textarea { width: 100%; min-height: 100px; resize: vertical; }
+  #login { display: flex; align-items: center; justify-content: center; height: 100vh; }
+  #login .card { width: 320px; }
+  .hidden { display: none !important; }
+  .muted { color: #5b6b7d; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="card">
+    <h2>Store Operator Admin</h2>
+    <p class="muted">Enter your admin key and API base URL to continue.</p>
+    <div class="row"><input id="login-url" placeholder="https://your-app.vercel.app" style="flex:1" /></div>
+    <div class="row"><input id="login-key" type="password" placeholder="Admin API key" style="flex:1" /></div>
+    <button onclick="login()">Continue</button>
+    <div id="login-status" class="status"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <h1>Store Operator Admin</h1>
+    <div class="store-picker">
+      <label for="store-select">Store</label>
+      <select id="store-select" onchange="onStoreChange()"></select>
+      <button class="secondary" onclick="logout()">Log out</button>
+    </div>
+  </header>
+
+  <nav>
+    <button class="tab active" data-tab="products" onclick="showTab('products')">Products</button>
+    <button class="tab" data-tab="content" onclick="showTab('content')">Content</button>
+    <button class="tab" data-tab="marketing" onclick="showTab('marketing')">Marketing</button>
+    <button class="tab" data-tab="orders" onclick="showTab('orders')">Orders</button>
+  </nav>
+
+  <main>
+    <!-- PRODUCTS -->
+    <section id="tab-products" class="panel">
+      <div class="card">
+        <h2>Search products</h2>
+        <div class="row">
+          <input id="product-search" placeholder="Search by name..." />
+          <button onclick="searchProducts()">Search</button>
+        </div>
+        <table>
+          <thead><tr><th>Name</th><th>Price</th><th>Stock</th><th></th></tr></thead>
+          <tbody id="product-rows"></tbody>
+        </table>
+        <div id="product-status" class="status"></div>
+      </div>
+    </section>
+
+    <!-- CONTENT -->
+    <section id="tab-content" class="panel hidden">
+      <div class="card">
+        <h2>New post</h2>
+        <div class="row"><input id="post-title" placeholder="Title" style="flex:1" /></div>
+        <div class="row"><textarea id="post-content" placeholder="Content (HTML allowed)"></textarea></div>
+        <div class="row">
+          <select id="post-status">
+            <option value="draft">Save as draft</option>
+            <option value="publish">Publish now</option>
+          </select>
+          <button onclick="createPost()">Create</button>
+        </div>
+        <div id="content-create-status" class="status"></div>
+      </div>
+
+      <div class="card">
+        <h2>Existing posts &amp; pages</h2>
+        <div class="row">
+          <input id="content-search" placeholder="Search title..." />
+          <select id="content-resource">
+            <option value="post">Posts</option>
+            <option value="page">Pages</option>
+          </select>
+          <button onclick="searchContent()">Search</button>
+        </div>
+        <table>
+          <thead><tr><th>Title</th><th>Status</th><th></th></tr></thead>
+          <tbody id="content-rows"></tbody>
+        </table>
+        <div id="content-status" class="status"></div>
+      </div>
+    </section>
+
+    <!-- MARKETING -->
+    <section id="tab-marketing" class="panel hidden">
+      <div class="card">
+        <h2>Send a campaign</h2>
+        <div class="row">
+          <select id="mkt-channel" onchange="onChannelChange()">
+            <option value="email">Email (Brevo)</option>
+            <option value="sms">SMS (Africa's Talking)</option>
+          </select>
+        </div>
+        <div class="row"><input id="mkt-to" placeholder="Recipients, comma-separated" style="flex:1" /></div>
+        <div class="row" id="mkt-subject-row"><input id="mkt-subject" placeholder="Subject" style="flex:1" /></div>
+        <div class="row"><textarea id="mkt-body" placeholder="Message / HTML content"></textarea></div>
+        <button onclick="sendCampaign()">Send</button>
+        <p class="muted">Test with one or two recipients first - sends go out immediately.</p>
+        <div id="mkt-status" class="status"></div>
+      </div>
+    </section>
+
+    <!-- ORDERS -->
+    <section id="tab-orders" class="panel hidden">
+      <div class="card">
+        <h2>Recent orders</h2>
+        <button class="secondary" onclick="loadOrders()">Refresh</button>
+        <table>
+          <thead><tr><th>#</th><th>Status</th><th>Total</th><th>Customer</th></tr></thead>
+          <tbody id="order-rows"></tbody>
+        </table>
+        <div id="order-status" class="status"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+let API_URL = '';
+let ADMIN_KEY = '';
+let CURRENT_STORE = '';
+
+function login() {
+  API_URL = document.getElementById('login-url').value.trim().replace(/\/$/, '');
+  ADMIN_KEY = document.getElementById('login-key').value.trim();
+  if (!API_URL || !ADMIN_KEY) return setStatus('login-status', 'err', 'Both fields are required.');
+  localStorage.setItem('so_api_url', API_URL);
+  localStorage.setItem('so_admin_key', ADMIN_KEY);
+  boot();
+}
+
+function logout() {
+  localStorage.removeItem('so_api_url');
+  localStorage.removeItem('so_admin_key');
+  location.reload();
+}
+
+async function boot() {
+  try {
+    const { stores } = await api('GET', '/api/admin/stores');
+    const select = document.getElementById('store-select');
+    select.innerHTML = stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    CURRENT_STORE = stores[0]?.id || '';
+    document.getElementById('login').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+  } catch (err) {
+    setStatus('login-status', 'err', 'Could not connect: ' + err.message);
+  }
+}
+
+function onStoreChange() {
+  CURRENT_STORE = document.getElementById('store-select').value;
+}
+
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
+}
+
+async function api(method, path, body) {
+  const res = await fetch(API_URL + path, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+function setStatus(id, kind, msg) {
+  const el = document.getElementById(id);
+  el.className = 'status ' + kind;
+  el.textContent = msg;
+}
+
+// --- Products ---
+async function searchProducts() {
+  const search = document.getElementById('product-search').value.trim();
+  try {
+    const { items } = await api('POST', '/api/admin/query', { storeId: CURRENT_STORE, resource: 'product', search });
+    document.getElementById('product-rows').innerHTML = items.map(p => `
+      <tr>
+        <td>${p.name}</td>
+        <td><input data-id="${p.id}" data-field="price" value="${p.regular_price || p.price || ''}" /></td>
+        <td><input data-id="${p.id}" data-field="stock" value="${p.stock_quantity ?? ''}" /></td>
+        <td><button onclick="saveProduct(${p.id})">Save</button></td>
+      </tr>`).join('') || '<tr><td colspan="4" class="muted">No products found.</td></tr>';
+  } catch (err) {
+    setStatus('product-status', 'err', err.message);
+  }
+}
+
+async function saveProduct(id) {
+  const price = document.querySelector(`input[data-id="${id}"][data-field="price"]`).value;
+  const stock = document.querySelector(`input[data-id="${id}"][data-field="stock"]`).value;
+  try {
+    await api('POST', '/api/admin/update-product', {
+      storeId: CURRENT_STORE, productId: id,
+      regularPrice: price || undefined,
+      stockQuantity: stock !== '' ? Number(stock) : undefined,
+    });
+    setStatus('product-status', 'ok', `Saved product #${id}.`);
+  } catch (err) {
+    setStatus('product-status', 'err', err.message);
+  }
+}
+
+// --- Content ---
+async function createPost() {
+  const title = document.getElementById('post-title').value.trim();
+  const content = document.getElementById('post-content').value;
+  const status = document.getElementById('post-status').value;
+  if (!title) return setStatus('content-create-status', 'err', 'Title is required.');
+  try {
+    await api('POST', '/api/admin/content', { storeId: CURRENT_STORE, resource: 'post', action: 'create', title, content, status });
+    setStatus('content-create-status', 'ok', status === 'publish' ? 'Published!' : 'Saved as draft.');
+    document.getElementById('post-title').value = '';
+    document.getElementById('post-content').value = '';
+  } catch (err) {
+    setStatus('content-create-status', 'err', err.message);
+  }
+}
+
+async function searchContent() {
+  const search = document.getElementById('content-search').value.trim();
+  const resource = document.getElementById('content-resource').value;
+  try {
+    const { items } = await api('POST', '/api/admin/query', { storeId: CURRENT_STORE, resource, search });
+    document.getElementById('content-rows').innerHTML = items.map(item => `
+      <tr>
+        <td>${item.title?.rendered || '(untitled)'}</td>
+        <td>${item.status}</td>
+        <td>
+          ${item.status !== 'publish'
+            ? `<button onclick="publishContent('${resource}', ${item.id})">Publish</button>`
+            : '<span class="muted">Live</span>'}
+        </td>
+      </tr>`).join('') || '<tr><td colspan="3" class="muted">Nothing found.</td></tr>';
+  } catch (err) {
+    setStatus('content-status', 'err', err.message);
+  }
+}
+
+async function publishContent(resource, id) {
+  try {
+    const idField = resource === 'post' ? 'postId' : 'pageId';
+    await api('POST', '/api/admin/content', { storeId: CURRENT_STORE, resource, action: 'update', [idField]: id, fields: { status: 'publish' } });
+    setStatus('content-status', 'ok', 'Published.');
+    searchContent();
+  } catch (err) {
+    setStatus('content-status', 'err', err.message);
+  }
+}
+
+// --- Marketing ---
+function onChannelChange() {
+  const isEmail = document.getElementById('mkt-channel').value === 'email';
+  document.getElementById('mkt-subject-row').classList.toggle('hidden', !isEmail);
+}
+
+async function sendCampaign() {
+  const channel = document.getElementById('mkt-channel').value;
+  const to = document.getElementById('mkt-to').value.split(',').map(s => s.trim()).filter(Boolean);
+  const body = document.getElementById('mkt-body').value;
+  const subject = document.getElementById('mkt-subject').value;
+  if (to.length === 0) return setStatus('mkt-status', 'err', 'At least one recipient is required.');
+  try {
+    const payload = { storeId: CURRENT_STORE, channel, to };
+    if (channel === 'email') { payload.subject = subject; payload.htmlContent = body; }
+    else { payload.message = body; }
+    await api('POST', '/api/admin/send-campaign', payload);
+    setStatus('mkt-status', 'ok', `Sent to ${to.length} recipient(s).`);
+  } catch (err) {
+    setStatus('mkt-status', 'err', err.message);
+  }
+}
+
+// --- Orders ---
+async function loadOrders() {
+  try {
+    const { items } = await api('POST', '/api/admin/query', { storeId: CURRENT_STORE, resource: 'order' });
+    document.getElementById('order-rows').innerHTML = items.map(o => `
+      <tr>
+        <td>#${o.number}</td>
+        <td>${o.status}</td>
+        <td>${o.currency} ${o.total}</td>
+        <td>${o.billing?.first_name || ''} ${o.billing?.last_name || ''}</td>
+      </tr>`).join('') || '<tr><td colspan="4" class="muted">No orders found.</td></tr>';
+  } catch (err) {
+    setStatus('order-status', 'err', err.message);
+  }
+}
+
+// --- Boot from saved credentials ---
+(function init() {
+  const savedUrl = localStorage.getItem('so_api_url');
+  const savedKey = localStorage.getItem('so_admin_key');
+  if (savedUrl && savedKey) {
+    API_URL = savedUrl; ADMIN_KEY = savedKey;
+    boot();
+  }
+})();
+</script>
+</body>
+</html>
