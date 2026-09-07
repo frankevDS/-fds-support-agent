@@ -38,18 +38,19 @@
   const style = document.createElement('style');
   style.textContent = `
     #fds-chat-launcher {
-      position: fixed; bottom: 20px; right: 20px; z-index: 999999;
+      position: fixed; bottom: 92px; right: 20px; z-index: 999999;
       width: 56px; height: 56px; border-radius: 50%;
       background: ${COLORS.ink}; color: ${COLORS.paper};
       border: none; cursor: pointer; box-shadow: 0 6px 20px rgba(18,32,54,0.25);
       display: flex; align-items: center; justify-content: center;
-      font-size: 24px; transition: transform 0.15s ease;
+      transition: transform 0.15s ease;
     }
+    #fds-chat-launcher svg { width: 26px; height: 26px; display: block; }
     #fds-chat-launcher:hover { transform: scale(1.05); }
     #fds-chat-launcher:focus-visible { outline: 3px solid ${COLORS.teal}; outline-offset: 2px; }
 
     #fds-chat-panel {
-      position: fixed; bottom: 88px; right: 20px; z-index: 999999;
+      position: fixed; bottom: 160px; right: 20px; z-index: 999999;
       width: 340px; max-width: calc(100vw - 40px); height: 460px;
       background: ${COLORS.paper}; border-radius: 14px;
       box-shadow: 0 12px 40px rgba(18,32,54,0.22);
@@ -65,7 +66,8 @@
       display: flex; justify-content: space-between; align-items: center;
     }
     #fds-chat-header span.sub { display:block; font-weight: 400; font-size: 12px; opacity: 0.75; margin-top: 2px; }
-    #fds-chat-close { background: none; border: none; color: ${COLORS.paper}; font-size: 18px; cursor: pointer; line-height: 1; }
+    #fds-chat-close { background: none; border: none; color: ${COLORS.paper}; cursor: pointer; line-height: 1; padding: 4px; display: flex; }
+    #fds-chat-close svg { width: 16px; height: 16px; }
 
     #fds-chat-messages {
       flex: 1; overflow-y: auto; padding: 14px; background: ${COLORS.mist};
@@ -91,14 +93,26 @@
   const launcher = document.createElement('button');
   launcher.id = 'fds-chat-launcher';
   launcher.setAttribute('aria-label', 'Open support chat');
-  launcher.textContent = '💬';
+  launcher.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9l-4.6 3.45A.5.5 0 0 1 3 20.05V6a2 2 0 0 1 2-2z"
+            fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      <circle cx="8.5" cy="10.5" r="1.1" fill="currentColor"/>
+      <circle cx="12.5" cy="10.5" r="1.1" fill="currentColor"/>
+      <circle cx="16.5" cy="10.5" r="1.1" fill="currentColor"/>
+    </svg>
+  `;
 
   const panel = document.createElement('div');
   panel.id = 'fds-chat-panel';
   panel.innerHTML = `
     <div id="fds-chat-header">
       <div>Frankev Support<span class="sub">Usually replies in a few seconds</span></div>
-      <button id="fds-chat-close" aria-label="Close chat">✕</button>
+      <button id="fds-chat-close" aria-label="Close chat">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
     </div>
     <div id="fds-chat-messages"></div>
     <form id="fds-chat-form">
