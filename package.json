@@ -1,0 +1,12 @@
+{
+  "name": "fds-support-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Customer support AI agent backend for frankevdigitalservices.com",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}
