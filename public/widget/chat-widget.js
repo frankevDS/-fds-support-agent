@@ -19,12 +19,14 @@
 
   const ENDPOINT = scriptTag.getAttribute('data-endpoint');
   const STORE_ID = scriptTag.getAttribute('data-store-id');
+  const LEAD_ENDPOINT = ENDPOINT.replace(/\/api\/chat\/?$/, '/api/lead');
 
   if (!ENDPOINT || !STORE_ID) {
     console.error('FDS chat widget: missing data-endpoint or data-store-id attribute.');
     return;
   }
   const sessionId = 'fds-' + Math.random().toString(36).slice(2) + Date.now();
+  const EMAIL_STORAGE_KEY = `fds_chat_email_${STORE_ID}`;
 
   const COLORS = {
     ink: '#122036',
@@ -39,18 +41,20 @@
   style.textContent = `
     #fds-chat-launcher {
       position: fixed; bottom: 92px; right: 20px; z-index: 999999;
-      width: 56px; height: 56px; border-radius: 50%;
-      background: ${COLORS.ink}; color: ${COLORS.paper};
-      border: none; cursor: pointer; box-shadow: 0 6px 20px rgba(18,32,54,0.25);
-      display: flex; align-items: center; justify-content: center;
-      transition: transform 0.15s ease;
+      height: 52px; padding: 0 18px 0 16px; border-radius: 26px;
+      background: ${COLORS.paper}; color: ${COLORS.ink};
+      border: 1px solid ${COLORS.border}; cursor: pointer;
+      box-shadow: 0 8px 24px rgba(18,32,54,0.18);
+      display: flex; align-items: center; gap: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px; font-weight: 600; transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-    #fds-chat-launcher svg { width: 26px; height: 26px; display: block; }
-    #fds-chat-launcher:hover { transform: scale(1.05); }
+    #fds-chat-launcher svg { width: 22px; height: 22px; display: block; flex-shrink: 0; }
+    #fds-chat-launcher:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(18,32,54,0.24); }
     #fds-chat-launcher:focus-visible { outline: 3px solid ${COLORS.teal}; outline-offset: 2px; }
 
     #fds-chat-panel {
-      position: fixed; bottom: 160px; right: 20px; z-index: 999999;
+      position: fixed; bottom: 156px; right: 20px; z-index: 999999;
       width: 340px; max-width: calc(100vw - 40px); height: 460px;
       background: ${COLORS.paper}; border-radius: 14px;
       box-shadow: 0 12px 40px rgba(18,32,54,0.22);
@@ -87,6 +91,23 @@
       font-weight: 600; cursor: pointer; font-size: 13.5px;
     }
     #fds-chat-send:hover { background: ${COLORS.tealDark}; }
+
+    #fds-chat-gate {
+      flex: 1; display: flex; flex-direction: column; justify-content: center;
+      padding: 24px 20px; background: ${COLORS.paper}; gap: 10px;
+    }
+    #fds-chat-gate p { margin: 0 0 4px; font-size: 13px; color: #435067; line-height: 1.5; }
+    #fds-chat-gate input {
+      border: 1px solid ${COLORS.border}; border-radius: 8px; padding: 11px 12px;
+      font-size: 13.5px; outline: none;
+    }
+    #fds-chat-gate input:focus { border-color: ${COLORS.teal}; }
+    #fds-chat-gate button {
+      background: ${COLORS.ink}; color: #fff; border: none; border-radius: 8px;
+      padding: 11px; font-weight: 600; font-size: 13.5px; cursor: pointer; margin-top: 4px;
+    }
+    #fds-chat-gate button:hover { background: #0c1626; }
+    #fds-chat-gate .fds-gate-error { color: #C1443C; font-size: 12px; display: none; }
   `;
   document.head.appendChild(style);
 
@@ -96,11 +117,12 @@
   launcher.innerHTML = `
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9l-4.6 3.45A.5.5 0 0 1 3 20.05V6a2 2 0 0 1 2-2z"
-            fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-      <circle cx="8.5" cy="10.5" r="1.1" fill="currentColor"/>
-      <circle cx="12.5" cy="10.5" r="1.1" fill="currentColor"/>
-      <circle cx="16.5" cy="10.5" r="1.1" fill="currentColor"/>
+            fill="none" stroke="#122036" stroke-width="1.8" stroke-linejoin="round"/>
+      <circle cx="8.5" cy="10.5" r="1.1" fill="#122036"/>
+      <circle cx="12.5" cy="10.5" r="1.1" fill="#122036"/>
+      <circle cx="16.5" cy="10.5" r="1.1" fill="#122036"/>
     </svg>
+    <span>Chat with us</span>
   `;
 
   const panel = document.createElement('div');
@@ -114,8 +136,14 @@
         </svg>
       </button>
     </div>
-    <div id="fds-chat-messages"></div>
-    <form id="fds-chat-form">
+    <div id="fds-chat-gate">
+      <p><strong>Before we start</strong> - what's your email? We'll use it only to follow up if we get disconnected.</p>
+      <input id="fds-gate-email" type="email" placeholder="you@email.com" autocomplete="email" />
+      <div class="fds-gate-error" id="fds-gate-error">Please enter a valid email address.</div>
+      <button id="fds-gate-submit" type="button">Start chatting</button>
+    </div>
+    <div id="fds-chat-messages" style="display:none"></div>
+    <form id="fds-chat-form" style="display:none">
       <input id="fds-chat-input" type="text" placeholder="Ask about orders, pricing, services..." autocomplete="off" />
       <button id="fds-chat-send" type="submit">Send</button>
     </form>
@@ -124,6 +152,10 @@
   document.body.appendChild(launcher);
   document.body.appendChild(panel);
 
+  const gateEl = panel.querySelector('#fds-chat-gate');
+  const gateEmailEl = panel.querySelector('#fds-gate-email');
+  const gateErrorEl = panel.querySelector('#fds-gate-error');
+  const gateSubmitEl = panel.querySelector('#fds-gate-submit');
   const messagesEl = panel.querySelector('#fds-chat-messages');
   const formEl = panel.querySelector('#fds-chat-form');
   const inputEl = panel.querySelector('#fds-chat-input');
@@ -137,13 +169,61 @@
     return el;
   }
 
-  let greeted = false;
+  function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  }
+
+  async function saveLead(email) {
+    try {
+      await fetch(LEAD_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId: STORE_ID, sessionId, email }),
+      });
+    } catch (err) {
+      console.warn('FDS chat widget: could not save lead email.', err);
+    }
+  }
+
+  function unlockChat(alreadyKnownEmail) {
+    gateEl.style.display = 'none';
+    messagesEl.style.display = 'flex';
+    formEl.style.display = 'flex';
+    addMessage(
+      alreadyKnownEmail
+        ? "Welcome back! Ask me about orders, pricing, or our services."
+        : "Thanks! Ask me about orders, pricing, or our services.",
+      'bot'
+    );
+    inputEl.focus();
+  }
+
+  gateSubmitEl.addEventListener('click', async () => {
+    const email = gateEmailEl.value.trim();
+    if (!isValidEmail(email)) {
+      gateErrorEl.style.display = 'block';
+      return;
+    }
+    gateErrorEl.style.display = 'none';
+    localStorage.setItem(EMAIL_STORAGE_KEY, email);
+    await saveLead(email);
+    unlockChat(false);
+  });
+  gateEmailEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') gateSubmitEl.click();
+  });
+
+  let opened = false;
   launcher.addEventListener('click', () => {
     panel.classList.toggle('open');
-    if (panel.classList.contains('open') && !greeted) {
-      greeted = true;
-      addMessage("Hi! I'm the Frankev support assistant. Ask me about orders, pricing, or our services.", 'bot');
-      inputEl.focus();
+    if (panel.classList.contains('open') && !opened) {
+      opened = true;
+      const knownEmail = localStorage.getItem(EMAIL_STORAGE_KEY);
+      if (knownEmail) {
+        unlockChat(true);
+      } else {
+        gateEmailEl.focus();
+      }
     }
   });
   panel.querySelector('#fds-chat-close').addEventListener('click', () => panel.classList.remove('open'));
