@@ -4,6 +4,7 @@ const { getStore } = require('../../lib/store');
 const { requireAdmin } = require('../../lib/admin-auth');
 const wc = require('../../lib/woocommerce');
 const wp = require('../../lib/wordpress');
+const { listLeads } = require('../../lib/supabase');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -24,6 +25,7 @@ module.exports = async (req, res) => {
     else if (resource === 'post') items = await wp.listPosts(store, { search, status: 'any', perPage: 20 });
     else if (resource === 'page') items = await wp.listPages(store, { search, status: 'any', perPage: 20 });
     else if (resource === 'category') items = await wp.listCategories(store);
+    else if (resource === 'lead') items = await listLeads(store.id);
     else return res.status(400).json({ error: `Unsupported resource: ${resource}` });
 
     return res.status(200).json({ items });
