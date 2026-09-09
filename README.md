@@ -62,6 +62,21 @@ anyway, set `GROQ_MODEL`.
   currently auto-selected, what's configured, and everything available on
   your account - worth checking whenever you get a deprecation email.
 
+## Applying updates to an existing Supabase database
+`sql/schema.sql` uses `CREATE TABLE IF NOT EXISTS`, which does nothing to
+a table that already exists - so when a future update adds a *column* to
+an existing table (like `url` on `knowledge_base`, or the `whatsapp_*`
+columns on `stores`), re-running `schema.sql` alone will NOT add it.
+Check the `sql/` folder for a numbered `migration-XXX.sql` file after any
+update and run it - it uses `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`,
+which is safe to run even if some columns already exist.
+
+## Human handoff
+If `support_whatsapp_number` is set on a store, the agent invites the
+visitor to WhatsApp that number whenever the knowledge base doesn't cover
+their question, instead of just saying "I'm not sure." It never invents a
+number if one isn't set.
+
 ## Lead capture
 Before a visitor can send their first chat message, the widget asks for
 their email (skipped on repeat visits via the browser's local storage) and
