@@ -53,8 +53,56 @@ want the content-management helper (`lib/wordpress.js`) to create or edit
 posts on that site.
 
 ## 4. Get a Groq API key
-console.groq.com - check console.groq.com/docs/models for the current
-recommended model, since Groq retires older ones periodically.
+console.groq.com. You do NOT need to manually track which model to use -
+`lib/groq.js` checks `GET /openai/v1/models` against your account and
+automatically picks the best available model from a preference-ordered
+list, re-checking every 10 minutes. If you want to pin a specific model
+anyway, set `GROQ_MODEL`.
+- `GET /api/admin/model-health` (admin-key protected) shows what's
+  currently auto-selected, what's configured, and everything available on
+  your account - worth checking whenever you get a deprecation email.
+
+## Lead capture
+Before a visitor can send their first chat message, the widget asks for
+their email (skipped on repeat visits via the browser's local storage) and
+saves it to the `leads` table via the public `/api/lead` endpoint. If that
+email has been seen before for this store (even from a different device),
+the agent greets them as a returning visitor. View captured emails,
+visit counts, and first/last-seen dates in the dashboard's **Leads** tab.
+
+## Knowledge base links
+Add an optional `url` to any `knowledge_base` row (see
+`sql/knowledge_base_seed.sql`) pointing at a blog post or page with more
+detail. When the agent uses that row to answer, it appends the link to its
+reply so the visitor can read further - it only ever uses a URL you
+actually provided, never one it invents.
+
+## WhatsApp (via Meta's WhatsApp Business Cloud API)
+1. Create a Meta App at developers.facebook.com, add the WhatsApp product,
+   and get a phone number connected to it (a test number works for
+   development; you'll need a real verified number to message anyone
+   outside your test list).
+2. In the store's row in Supabase, fill in `whatsapp_phone_number_id`
+   (from the Meta App's WhatsApp setup page), `whatsapp_access_token`
+   (a permanent token - generate one via a System User in Meta Business
+   Settings, not the 24-hour temporary token), and `whatsapp_verify_token`
+   (any string you make up yourself).
+3. In the Meta App's WhatsApp > Configuration page, set the Webhook URL to
+   `https://YOUR-VERCEL-URL.vercel.app/api/whatsapp/webhook` and the
+   Verify Token to the same value you put in `whatsapp_verify_token`.
+   Meta will call this URL once to confirm it - if it fails, double check
+   the token matches exactly.
+4. Subscribe the webhook to the `messages` field.
+5. Message the connected WhatsApp number from your own phone - it runs
+   through the exact same knowledge base, order lookups, and Groq model as
+   the website widget (they share `lib/support-agent.js`), so anything you
+   teach the agent via the knowledge base works on both channels
+   automatically.
+
+This is a first version: it replies to plain text messages. It doesn't
+yet send images/buttons, handle voice notes, or proactively message
+customers (e.g. abandoned cart follow-ups) - those are natural next steps
+once basic two-way messaging is confirmed working.
 
 ## 5. Deploy to Vercel
 ```bash
