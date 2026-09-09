@@ -78,9 +78,15 @@
       display: flex; flex-direction: column; gap: 10px;
     }
     .fds-msg { max-width: 85%; padding: 9px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.4; }
+    .fds-msg a { color: inherit; text-decoration: underline; }
     .fds-msg.user { align-self: flex-end; background: ${COLORS.teal}; color: #fff; border-bottom-right-radius: 4px; }
     .fds-msg.bot { align-self: flex-start; background: ${COLORS.paper}; color: ${COLORS.ink}; border: 1px solid ${COLORS.border}; border-bottom-left-radius: 4px; }
     .fds-msg.typing { align-self: flex-start; color: #6b7785; font-style: italic; font-size: 12.5px; }
+    .fds-msg-time { font-size: 10.5px; color: #8b96a6; margin-top: 3px; }
+    .fds-msg.user .fds-msg-time { text-align: right; color: rgba(255,255,255,0.75); }
+    #fds-chat-start-time {
+      align-self: center; font-size: 11px; color: #8b96a6; margin-bottom: 4px;
+    }
 
     #fds-chat-form { display: flex; border-top: 1px solid ${COLORS.border}; }
     #fds-chat-input {
@@ -160,13 +166,44 @@
   const formEl = panel.querySelector('#fds-chat-form');
   const inputEl = panel.querySelector('#fds-chat-input');
 
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Turns plain text from the bot (or the visitor) into safe, readable HTML:
+  // escapes real HTML first, then re-introduces **bold**, clickable links,
+  // and line breaks. Never trusts raw HTML from either side.
+  function formatMessageHtml(text) {
+    let safe = escapeHtml(text);
+    safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    safe = safe.replace(
+      /(https?:\/\/[^\s<]+)/g,
+      (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
+    );
+    safe = safe.replace(/\n/g, '<br>');
+    return safe;
+  }
+
   function addMessage(text, role) {
     const el = document.createElement('div');
     el.className = `fds-msg ${role}`;
-    el.textContent = text;
+    el.innerHTML = formatMessageHtml(text);
+    if (role === 'user' || role === 'bot') {
+      const timeEl = document.createElement('div');
+      timeEl.className = 'fds-msg-time';
+      timeEl.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      el.appendChild(timeEl);
+    }
     messagesEl.appendChild(el);
     messagesEl.scrollTop = messagesEl.scrollHeight;
     return el;
+  }
+
+  function addChatStartMarker() {
+    const el = document.createElement('div');
+    el.id = 'fds-chat-start-time';
+    el.textContent = 'Chat started ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    messagesEl.appendChild(el);
   }
 
   function isValidEmail(value) {
@@ -175,13 +212,15 @@
 
   async function saveLead(email) {
     try {
-      await fetch(LEAD_ENDPOINT, {
+      const res = await fetch(LEAD_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storeId: STORE_ID, sessionId, email }),
       });
+      return await res.json().catch(() => ({}));
     } catch (err) {
       console.warn('FDS chat widget: could not save lead email.', err);
+      return {};
     }
   }
 
@@ -189,6 +228,7 @@
     gateEl.style.display = 'none';
     messagesEl.style.display = 'flex';
     formEl.style.display = 'flex';
+    addChatStartMarker();
     addMessage(
       alreadyKnownEmail
         ? "Welcome back! Ask me about orders, pricing, or our services."
@@ -206,8 +246,8 @@
     }
     gateErrorEl.style.display = 'none';
     localStorage.setItem(EMAIL_STORAGE_KEY, email);
-    await saveLead(email);
-    unlockChat(false);
+    const result = await saveLead(email);
+    unlockChat(!!result.returning);
   });
   gateEmailEl.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') gateSubmitEl.click();

@@ -91,6 +91,7 @@
     <button class="tab" data-tab="content" onclick="showTab('content')">Content</button>
     <button class="tab" data-tab="marketing" onclick="showTab('marketing')">Marketing</button>
     <button class="tab" data-tab="orders" onclick="showTab('orders')">Orders</button>
+    <button class="tab" data-tab="leads" onclick="showTab('leads')">Leads</button>
   </nav>
 
   <main>
@@ -173,6 +174,19 @@
           <tbody id="order-rows"></tbody>
         </table>
         <div id="order-status" class="status"></div>
+      </div>
+    </section>
+
+    <!-- LEADS -->
+    <section id="tab-leads" class="panel hidden">
+      <div class="card">
+        <h2>Emails collected via chat</h2>
+        <button class="secondary" onclick="loadLeads()">Refresh</button>
+        <table>
+          <thead><tr><th>Email</th><th>Visits</th><th>First seen</th><th>Last seen</th></tr></thead>
+          <tbody id="lead-rows"></tbody>
+        </table>
+        <div id="lead-status" class="status"></div>
       </div>
     </section>
   </main>
@@ -354,6 +368,22 @@ async function loadOrders() {
       </tr>`).join('') || '<tr><td colspan="4" class="muted">No orders found.</td></tr>';
   } catch (err) {
     setStatus('order-status', 'err', err.message);
+  }
+}
+
+// --- Leads ---
+async function loadLeads() {
+  try {
+    const { items } = await api('POST', '/api/admin/query', { storeId: CURRENT_STORE, resource: 'lead' });
+    document.getElementById('lead-rows').innerHTML = items.map(l => `
+      <tr>
+        <td>${l.email}</td>
+        <td>${l.visits}</td>
+        <td>${new Date(l.firstSeen).toLocaleDateString()}</td>
+        <td>${new Date(l.lastSeen).toLocaleString()}</td>
+      </tr>`).join('') || '<tr><td colspan="4" class="muted">No leads captured yet.</td></tr>';
+  } catch (err) {
+    setStatus('lead-status', 'err', err.message);
   }
 }
 
