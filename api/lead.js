@@ -1,4 +1,4 @@
-const { saveLead } = require('../lib/supabase');
+const { saveLead, hasSeenEmailBefore } = require('../lib/supabase');
 const { getStore } = require('../lib/store');
 
 function setCors(res, store) {
@@ -28,9 +28,11 @@ module.exports = async (req, res) => {
     if (!store) return res.status(404).json({ error: `Unknown store: ${storeId}` });
 
     setCors(res, store);
+
+    const returning = await hasSeenEmailBefore(store.id, email);
     await saveLead({ storeId: store.id, sessionId, email });
 
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({ ok: true, returning });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Something went wrong.' });
